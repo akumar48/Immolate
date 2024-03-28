@@ -34,7 +34,7 @@ void print_text(text x) {
     printf("\n");
 }
 
-double fract(double f) {
+double __attribute__((overloadable)) fract(double f) {
     return f-floor(f);
 }
 
