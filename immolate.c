@@ -1,9 +1,81 @@
 #include "lib/immolate.h"
+cl_int write_binaries(cl_program program, unsigned num_devices,
+                      cl_uint platform_idx) {
+  unsigned i;
+  cl_int err = CL_SUCCESS;
+  size_t *binaries_size = NULL;
+  unsigned char **binaries_ptr = NULL;
+
+  // Read the binaries size
+  size_t binaries_size_alloc_size = sizeof(size_t) * num_devices;
+  binaries_size = (size_t *)malloc(binaries_size_alloc_size);
+  if (!binaries_size) {
+    err = CL_OUT_OF_HOST_MEMORY;
+    goto cleanup;
+  }
+
+  err = clGetProgramInfo(program, CL_PROGRAM_BINARY_SIZES,
+                         binaries_size_alloc_size, binaries_size, NULL);
+  if (err != CL_SUCCESS) {
+    goto cleanup;
+  }
+
+  // Read the binaries
+  size_t binaries_ptr_alloc_size = sizeof(unsigned char *) * num_devices;
+  binaries_ptr = (unsigned char **)malloc(binaries_ptr_alloc_size);
+  if (!binaries_ptr) {
+    err = CL_OUT_OF_HOST_MEMORY;
+    goto cleanup;
+  }
+  memset(binaries_ptr, 0, binaries_ptr_alloc_size);
+  for (i = 0; i < num_devices; ++i) {
+    binaries_ptr[i] = (unsigned char *)malloc(binaries_size[i]);
+    if (!binaries_ptr[i]) {
+      err = CL_OUT_OF_HOST_MEMORY;
+      goto cleanup;
+    }
+  }
+
+  err = clGetProgramInfo(program, CL_PROGRAM_BINARIES,
+                         binaries_ptr_alloc_size,
+                         binaries_ptr, NULL);
+  if (err != CL_SUCCESS) {
+    goto cleanup;
+  }
+
+  // Write the binaries to file
+  for (i = 0; i < num_devices; ++i) {
+    // Create output file name
+    char filename[128];
+    snprintf(filename, sizeof(filename), "cl-out_%u-%u.bin",
+             (unsigned)platform_idx, (unsigned)i);
+
+    // Write the binary to the output file
+    write_file(filename, binaries_ptr[i], binaries_size[i]);
+  }
+
+cleanup:
+  // Free the return value buffer
+  if (binaries_ptr) {
+    for (i = 0; i < num_devices; ++i) {
+      free(binaries_ptr[i]);
+    }
+    free(binaries_ptr);
+  }
+  free(binaries_size);
+
+  return err;
+}
+
 int main(int argc, char **argv) {
     
-    // Print version
-    printf_s("Immolate Beta v1.0.0n.0\n");
-
+//     // Print version
+//     printf_s("Immolate Beta v1.0.0n.0\n");
+//     time_t seconds;
+//     seconds = time(NULL);
+//     printf("%ld", seconds);
+//     return 0;
+// }
     // Handle CLI arguments
     unsigned int platformID = 0;
     unsigned int deviceID = 0;
@@ -232,7 +304,8 @@ int main(int argc, char **argv) {
     // Build the program
     printf_s("Building program...\n");
     err = clBuildProgram(ssKernelProgram, 1, &device, include_path, NULL, NULL);
-    if (err == CL_BUILD_PROGRAM_FAILURE) { //print build log on error
+    err2 = write_binaries(ssKernelProgram, 1, &device);
+    if (err == CL_BUILD_PROGRAM_FAILURE)||(err2 == CL_BUILD_PROGRAM_FAILURE) { //print build log on error
         size_t logLength = 0;
         err = clGetProgramBuildInfo(ssKernelProgram, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &logLength);
         if (err != CL_SUCCESS) {

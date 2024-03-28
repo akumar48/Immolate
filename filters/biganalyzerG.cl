@@ -3,13 +3,13 @@
 // Prints a full analysis of a seed. Vouchers and bosses to be implemented.
 // Run with -n 1 to only look at a single seed.
 long filter(instance* inst) {
-    int maxAnte = 8;
-    long cardsPerAnte[] = {8, 15, 15, 15, 15, 15, 15, 15};
+    int maxAnte = 30;
+    long cardsPerAnte[] = {15, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30};
     // These pull from Resample and Resample2 pools
-    int numRerolls = 5;
+    int numRerolls = 10;
     int numRerolls2 = 3;
     // Perform required initializations
-    // set_deck(inst, Zodiac_Deck); // red deck i think
+    set_deck(inst, Green_Deck);
     init_locks(inst, 1, false, false);
     for (int ante = 1; ante <= maxAnte; ante++) {
         init_unlocks(inst, ante, false);

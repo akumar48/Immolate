@@ -3,9 +3,9 @@
 // Finds number of negative jokers available in a seed. 7 seems common, 8 is rare. Trying to find 9/10.
 long filter(instance* inst) {
     int maxAnte = 8;
-    long cardsPerAnte[] = {8, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15};
+    long cardsPerAnte[] = {8, 15, 15, 15, 15, 15, 15, 15};
     // These pull from Resample and Resample2 pools
-    int numRerolls = 10;
+    int numRerolls = 5;
     int numRerolls2 = 3;
     // Perform required initializations
     set_deck(inst, Plasma_Deck);
