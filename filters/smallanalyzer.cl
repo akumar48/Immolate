@@ -4,7 +4,7 @@
 // Run with -n 1 to only look at a single seed.
 long filter(instance* inst) {
     int maxAnte = 8;
-    long cardsPerAnte[] = {8, 15, 15, 15, 15, 15, 15, 15};
+    long cardsPerAnte[] = {8, 8, 8, 8, 8, 8, 8, 8};
     // These pull from Resample and Resample2 pools
     int numRerolls = 5;
     int numRerolls2 = 3;
