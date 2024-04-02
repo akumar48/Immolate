@@ -31,4 +31,7 @@ def score_decoder(score, maxAnte):
 
 # score_decoder(1523909535,8) #29NT66TG
 # score_decoder(1505469530, 8) #SJ6DH4L5
-score_decoder(1768391901,8) #SJ6GGIBB
+# score_decoder(1768391901,8) #SJ6GGIBB
+score_decoder(2013303876,8) #L5PSRC69
+
+score_decoder(2022281912, 8) #SJDHXQ88

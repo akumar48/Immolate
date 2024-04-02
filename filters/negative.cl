@@ -2,7 +2,7 @@
 #include "lib/immolate.cl"
 // Finds number of negative jokers available in a seed. 
 // Score is read with python script. (base5, #ofnegatives(2digits) #ofnum_tagss(2digits) ante1 ante2 ante3 .. ante8)
-//immolate -f negative -s random -c 78125000 -g 256 (at least 8 jokers)
+//immolate -f negative -s random -c 78125000 -g 37 (at least 8 jokers)
 long filter(instance* inst) {
     int maxAnte = 8;
     long jokersPerAnte[] = {8, 8, 8, 8, 8, 8, 8, 8};
