@@ -1,37 +1,33 @@
-def score_decoder(score, maxAnte):
-	ante_array = []
-	total = 0
-	tags = 0
-	neg_weight = 0
-	while (score >= 5):
-		ante_array.append(score%5)
-		score = score //5
-	ante_array.append(score)
-	ante_array.reverse()
-	# print(ante_array)
-	num_jokers = ante_array[-1*maxAnte:]
-	num_tag = ante_array[-1*(maxAnte+2):-1*maxAnte]
-	neg_num = ante_array[-1*(maxAnte+4):-1*(maxAnte+2)]
-	raw_weight = ante_array[0:-1*(maxAnte+4)]
-	# print(num_jokers)
-	# print(num_tag)
-	# print(neg_num)
-	# print(neg_total)
-	for i, num in enumerate(neg_num):
-		total += num * 5**(len(neg_num)-1-i)
-	for i, num in enumerate(num_tag):
-		tags += num * 5**(len(num_tag)-1-i)
-	for i, num in enumerate(raw_weight):
-		neg_weight += num * 5**(len(raw_weight)-1-i)
-	print(f'Debug: weighted score - {neg_weight}')
-	print(f'There are {total} negative jokers.')
+#takes a score from the negative filter and analyzes it so you can keep the filter running
+#
+
+#Settings
+print_sum = True
+base = 5
+# max_ante = 30
+#function
+def score_decoder(score: int, max_ante: int = 8):
+	ante_array = [] 	#keep track of how many negative jokers per ante
+	tags = 0 			#negative tags
+	neg_weight = 0 		#weighted sum of jokers and tags
+	while (score >= base):											#unwrap score with base settings from negative.cl
+		ante_array.append(score%base)									#write to ante array for each ante
+		score = score //base											#decrement score to go to next ante
+	ante_array.append(score)											#write last ante & packet header to array
+	ante_array.reverse()												#switch the ante order for later reading
+	jokers_per_ante = ante_array[-1*max_ante:]							#array of negative jokers len = max_ante
+	num_tag = ante_array[-1*(max_ante+2):-1*max_ante]					#number of negative tags (2 digit header)
+	raw_weight = ante_array[0:-1*(max_ante+2)]							#weighted sum at MSB of packet, for score filter purposes
+	for i, num in enumerate(num_tag):#cook numbers back to base 10
+		tags += num * base**(len(num_tag)-1-i)
+	for i, num in enumerate(raw_weight):#cook numbers back to base 10
+		neg_weight += num * base**(len(raw_weight)-1-i)
+	if print_sum: print(f'Debug: weighted score - {neg_weight}')			
+	print(f'There are {sum(jokers_per_ante)} negative jokers.')
 	print(f'There are {tags} negative tags.')
-	print(f'number of negs antes 1-8:{num_jokers}')
+	print(f'Negative jokers from Antes 1-8:{jokers_per_ante}')
 	return neg_weight
 
-# score_decoder(1523909535,8) #29NT66TG
-# score_decoder(1505469530, 8) #SJ6DH4L5
-# score_decoder(1768391901,8) #SJ6GGIBB
-score_decoder(2013303876,8) #L5PSRC69
-
-score_decoder(2022281912, 8) #SJDHXQ88
+#Check seeds here:
+# score_decoder(____) #L5PSRC69
+# score_decoder(78922537) #SJDHXQ88

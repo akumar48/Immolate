@@ -1,11 +1,17 @@
 #define CACHE_SIZE 1000
 #include "lib/immolate.cl"
 // Finds number of negative jokers available in a seed. 
-// Score is read with python script. (base5, #ofnegatives(2digits) #ofnum_tagss(2digits) ante1 ante2 ante3 .. ante8)
-//immolate -f negative -s random -c 78125000 -g 37 (at least 8 jokers)
+// Score is read with python script.
+//immolate -f negative -s random -c random -g 40
 long filter(instance* inst) {
+
+    //Settings
     int maxAnte = 8;
-    long jokersPerAnte[] = {8, 8, 8, 8, 8, 8, 8, 8};
+    int base = 5;
+    long jokersPerAnte[] = {8, 8, 8, 8, 10, 12, 14, 16};
+
+
+
     // These pull from Resample and Resample2 pools
     int numRerolls = 5;
     int numRerolls2 = 3;
@@ -16,7 +22,6 @@ long filter(instance* inst) {
     int jokers_this_ante = 0;
     int total_jokers = 0;
     int delta = 1;
-    int base = 5;
     init_locks(inst, 1, false, false);
     for (int ante = 1; ante <= maxAnte; ante++) { //for every ante
         init_unlocks(inst, ante, false);                //all jokers unlcoked
@@ -52,7 +57,6 @@ long filter(instance* inst) {
         jokers_this_ante = 0;                                   //reset jokers this ante
     }
     score+= delta*num_tags;                                           //add num tags onto header  (2 digits)
-    score+= delta*base*base*total_jokers;                            //add num jokers onto header (2 digits)
-    score+= delta*base*base*base*base*(total_jokers+(num_tags>>1)); //add weighted sum to the front for score printing (rn jokers+0.5*tag)
+    score+= delta*base*base*(total_jokers+(num_tags>>1));           //add weighted sum to the front for score printing (rn jokers+0.5*tag) (divide by two = bit shift right by 1)
     return score;
 }
