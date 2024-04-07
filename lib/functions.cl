@@ -4,6 +4,21 @@ typedef struct Card {
     item edition;
     item seal;
 } card;
+
+bool is_voucher_active(instance* inst, item voucher) {
+    return inst->params.vouchers[voucher - (V_BEGIN + 1)];
+}
+
+void activate_voucher(instance* inst, item voucher) {
+    int voucherIndex = voucher - (V_BEGIN + 1);
+    inst->params.vouchers[voucherIndex] = true;
+
+    // Upgraded version requires base voucher activated.
+    if (voucherIndex % 2 == 1) {
+        inst->params.vouchers[voucherIndex - 1] = true;
+    }
+}
+
 #if V_AT_MOST(1,0,0,10)
 item standard_enhancement(instance* inst, int ante) {
     if (random_simple(inst, R_Standard_Has_Enhancement) <= 0.6) return No_Enhancement;
@@ -156,7 +171,15 @@ rarity next_joker_rarity(instance* inst, rsrc itemSource, int ante) {
     if (itemSource == S_Soul) {
         return Rarity_Legendary;
     }
-    // TODO : implement skip tag sources here
+    if (itemSource == S_Wraith) {
+        return Rarity_Rare;
+    }
+    if (itemSource == S_Rare_Tag) {
+        return Rarity_Rare;
+    }
+    if (itemSource == S_Uncommon_Tag) {
+        return Rarity_Uncommon;
+    }
 
     double randomNumber = random(inst, (__private ntype[]){N_Type, N_Ante, N_Source}, (__private int[]){R_Joker_Rarity, ante, itemSource}, 3);
     if (randomNumber > 0.95) {
@@ -168,8 +191,22 @@ rarity next_joker_rarity(instance* inst, rsrc itemSource, int ante) {
     return Rarity_Common;
 }
 
-// Get an object which carries both joker item, and its rarity.
-rarityjoker next_joker_with_rarity(instance* inst, rsrc itemSource, int ante) {
+item next_joker_edition(instance* inst, rsrc itemSource, int ante) {
+    double poll = random(inst, (__private ntype[]){N_Type, N_Source, N_Ante}, (__private int[]){R_Joker_Edition, itemSource, ante}, 3);
+    if (poll > 0.997) return Negative;
+    if (poll > 0.994) return Polychrome;
+    if (poll > 0.98) return Holographic;
+    if (poll > 0.96) return Foil;
+    return No_Edition;
+}
+
+bool is_next_joker_eternal(instance* inst, int ante) {
+    if (inst->params.stake < Black_Stake) return false;
+    return random(inst, (__private ntype[]){N_Type, N_Ante}, (__private int[]){R_Eternal, ante}, 2) > 0.7;
+}
+
+// Get an object which carries both joker item, its rarity, and its edition
+jokerdata next_joker_with_info(instance* inst, rsrc itemSource, int ante) {
     rarity nextRarity = next_joker_rarity(inst, itemSource, ante);
     item nextJoker;
 
@@ -183,54 +220,69 @@ rarityjoker next_joker_with_rarity(instance* inst, rsrc itemSource, int ante) {
         nextJoker = randchoice_common(inst, R_Joker_Common, itemSource, ante, COMMON_JOKERS);
     }
 
-    rarityjoker rarityJoker = {nextJoker, nextRarity};
+    jokerdata rarityJoker = {nextJoker, nextRarity, next_joker_edition(inst, itemSource, ante), is_next_joker_eternal(inst, ante)};
     return rarityJoker;
 }
 
+// Save calculations by doing the minimum needed
 item next_joker(instance* inst, rsrc itemSource, int ante) {
-    return next_joker_with_rarity(inst, itemSource, ante)._item;
+    rarity nextRarity = next_joker_rarity(inst, itemSource, ante);
+
+    if (nextRarity == Rarity_Legendary) {
+       return randchoice_common(inst, R_Joker_Legendary, itemSource, ante, LEGENDARY_JOKERS);
+    } else if (nextRarity == Rarity_Rare) {
+       return randchoice_common(inst, R_Joker_Rare, itemSource, ante, RARE_JOKERS);
+    } else if (nextRarity == Rarity_Uncommon) {
+       return randchoice_common(inst, R_Joker_Uncommon, itemSource, ante, UNCOMMON_JOKERS);
+    } else {
+       return randchoice_common(inst, R_Joker_Common, itemSource, ante, COMMON_JOKERS);
+    }
 }
 
-item next_joker_edition(instance* inst, rsrc itemSource, int ante) {
-    double poll = random(inst, (__private ntype[]){N_Type, N_Source, N_Ante}, (__private int[]){R_Joker_Edition, itemSource, ante}, 3);
-    if (poll > 0.997) return Negative;
-    if (poll > 0.994) return Polychrome;
-    if (poll > 0.98) return Holographic;
-    if (poll > 0.96) return Foil;
-    return No_Edition;
-}
 
 shop get_shop_instance(instance* inst) {
     double jokerRate = 20;
     double tarotRate = 4;
     double planetRate = 4;
+    double playingCardRate = 0;
     double spectralRate = 0;
 
     if (inst->params.deck == Ghost_Deck) {
-        spectralRate = 4;
+        spectralRate = 2;
     }
 
-    if (inst->params.tarotMerchantLevel == 1) {
-        tarotRate = 9.6;
-    } else if (inst->params.tarotMerchantLevel == 2) {
+    if (is_voucher_active(inst, Tarot_Tycoon)) {
         tarotRate = 32;
+    } else if (is_voucher_active(inst, Tarot_Merchant)) {
+        tarotRate = 9.6;
     }
 
-    if (inst->params.planetMerchantLevel == 1) {
-        planetRate = 9.6;
-    } else if (inst->params.planetMerchantLevel == 2) {
+    if (is_voucher_active(inst, Planet_Tycoon)) {
         planetRate = 32;
+    } else if (is_voucher_active(inst, Planet_Merchant)) {
+        planetRate = 9.6;
     }
 
-    shop _shop = {jokerRate, tarotRate, planetRate, spectralRate};
+    if (is_voucher_active(inst, Magic_Trick)) {
+        playingCardRate = 4;
+    }
+
+    shop _shop = {
+        jokerRate, 
+        tarotRate, 
+        planetRate, 
+        playingCardRate, 
+        spectralRate
+    };
     return _shop;
 }
 
 double get_total_rate(shop shopInstance) {
-    return shopInstance.jokerRate + shopInstance.tarotRate + shopInstance.planetRate + shopInstance.spectralRate;
+    return shopInstance.jokerRate + shopInstance.tarotRate + shopInstance.planetRate + shopInstance.playingCardRate + shopInstance.spectralRate;
 }
 
 itemtype get_item_type(shop shopInstance, double generatedValue) {
+    // Jokers -> Tarots -> Planets -> Playing Cards -> Spectrals
     if (generatedValue < shopInstance.jokerRate) {
         return ItemType_Joker;
     }
@@ -243,6 +295,11 @@ itemtype get_item_type(shop shopInstance, double generatedValue) {
     
     if (generatedValue < shopInstance.planetRate) {
         return ItemType_Planet;
+    }
+    generatedValue -= shopInstance.planetRate;
+
+    if (generatedValue < shopInstance.playingCardRate) {
+        return ItemType_PlayingCard;
     }
 
     return ItemType_Spectral;
@@ -262,6 +319,9 @@ shopitem next_shop_item(instance* inst, int ante) {
         shopItem = next_planet(inst, S_Shop, ante, false);
     } else if (type == ItemType_Spectral) {
         shopItem = next_spectral(inst, S_Shop, ante, false);
+    } else if (type == ItemType_PlayingCard) {
+        // TODO: Playing card support.
+        shopItem = RETRY;
     }
 
     shopitem nextShopItem = {type, shopItem};
@@ -269,6 +329,7 @@ shopitem next_shop_item(instance* inst, int ante) {
 }
 
 //Todo: Update for vouchers, add a general one for any type of card
+// Deprecated, use next_shop_item() ^
 item shop_joker(instance* inst, int ante) {
     double card_type = random(inst, (__private ntype[]){N_Type, N_Ante}, (__private int[]){R_Card_Type, ante}, 2) * 28;
     if (card_type <= 20) return next_joker(inst, S_Shop, ante);
@@ -335,6 +396,15 @@ void buffoon_pack(item out[], int size, instance* inst, int ante) {
     }
     for (int i = 0; i < size; i++) {
         inst->locked[out[i]] = false;
+    }
+}
+void buffoon_pack_detailed(jokerdata out[], int size, instance* inst, int ante) {
+    for (int i = 0; i < size; i++) {
+        out[i] = next_joker_with_info(inst, S_Buffoon, ante);
+        if (!inst->params.showman) inst->locked[out[i].joker] = true; // temporary reroll for locked items
+    }
+    for (int i = 0; i < size; i++) {
+        inst->locked[out[i].joker] = false;
     }
 }
 
@@ -448,9 +518,13 @@ void init_deck(instance* inst, item out[]) {
 void set_deck(instance* inst, item deck) {
     inst->params.deck = deck;
     if (deck == Zodiac_Deck) {
-        inst->params.tarotMerchantLevel = 1;
-        inst->params.planetMerchantLevel = 1;
+        activate_voucher(inst, Planet_Merchant);
+        activate_voucher(inst, Tarot_Merchant);
     }
+}
+
+void set_stake(instance* inst, item stake) {
+    inst->params.stake = stake;
 }
 
 void shuffle_deck(instance* inst, item deck[], int ante) {
